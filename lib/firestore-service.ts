@@ -5,6 +5,7 @@ import {
   getDoc, 
   doc, 
   setDoc, 
+  updateDoc,
   query, 
   where, 
   orderBy,
@@ -12,7 +13,7 @@ import {
   serverTimestamp 
 } from "firebase/firestore";
 import { Game, Leader } from "./data";
-import { AppUser } from "./users";
+import { AppUser, UserRole } from "./users";
 import { StoredSubmission } from "./submissions";
 
 /**
@@ -41,13 +42,28 @@ export async function fetchUserProfile(email: string): Promise<AppUser | null> {
   return null;
 }
 
+export async function fetchAllUsers(): Promise<AppUser[]> {
+  const querySnapshot = await getDocs(collection(db, "users"));
+  const users: AppUser[] = [];
+  querySnapshot.forEach((doc) => {
+    users.push(doc.data() as AppUser);
+  });
+  return users.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function createUserProfile(user: AppUser) {
   const userDocId = user.email.replace(/[@.]/g, "_");
   await setDoc(doc(db, "users", userDocId), {
     ...user,
     totalPoints: 0,
     createdAt: serverTimestamp(),
-  });
+  }, { merge: true });
+}
+
+export async function updateUserRole(email: string, role: UserRole) {
+  const userDocId = email.replace(/[@.]/g, "_");
+  const docRef = doc(db, "users", userDocId);
+  await updateDoc(docRef, { role });
 }
 
 /**
