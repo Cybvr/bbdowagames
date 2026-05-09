@@ -1,7 +1,6 @@
 import { db } from "./firebase";
 import { collection, doc, setDoc, getDocs, writeBatch } from "firebase/firestore";
-import { games, weeklyLeaders } from "./data";
-import { users as mockUsers } from "./users";
+import { mockGames, mockWeeklyLeaders, mockUsers } from "./mock-data";
 
 export async function seedFirestore() {
   console.log("Starting Firestore seed...");
@@ -11,7 +10,7 @@ export async function seedFirestore() {
 
     // 1. Seed Quests (Games)
     console.log("Seeding quests...");
-    for (const game of games) {
+    for (const game of mockGames) {
       const questRef = doc(db, "quests", game.id);
       batch.set(questRef, {
         ...game,
@@ -36,7 +35,7 @@ export async function seedFirestore() {
     console.log("Seeding leaderboard...");
     const leaderboardRef = doc(db, "leaderboard", "current");
     batch.set(leaderboardRef, {
-      weekly: weeklyLeaders,
+      weekly: mockWeeklyLeaders,
       updatedAt: new Date().toISOString(),
     });
 

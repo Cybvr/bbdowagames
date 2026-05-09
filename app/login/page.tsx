@@ -15,6 +15,7 @@ import {
   isAllowedEmail,
   normalizeEmail,
 } from "@/lib/users";
+import { createUserProfile, fetchUserProfile } from "@/lib/firestore-service";
 
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
@@ -45,10 +46,33 @@ export default function LoginPage() {
       if (emailForSignIn) {
         setIsLoading(true);
         signInWithEmailLink(auth, emailForSignIn, window.location.href)
-          .then((result) => {
+          .then(async (result) => {
             window.localStorage.removeItem("emailForSignIn");
             if (result.user.email) {
-              saveStoredUser(createSessionUser(result.user.email));
+              // 1. Check if user already exists in Firestore to get their real role
+              const existingUser = await fetchUserProfile(result.user.email);
+              
+              let sessionUser;
+              if (existingUser) {
+                sessionUser = {
+                  name: existingUser.name,
+                  email: existingUser.email,
+                  isAdmin: existingUser.role === "admin"
+                };
+              } else {
+                // 2. New user: Create session with default role (Jide bootstrap check still works)
+                sessionUser = createSessionUser(result.user.email);
+              }
+              
+              saveStoredUser(sessionUser);
+              
+              // 3. Ensure profile exists in Firestore (updates if exists, creates if new)
+              await createUserProfile({
+                name: sessionUser.name,
+                email: sessionUser.email,
+                role: sessionUser.isAdmin ? "admin" : "player"
+              });
+
               router.replace("/dashboard");
             }
           })
