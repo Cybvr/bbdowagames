@@ -9,7 +9,7 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(getStoredUser() ? "/dashboard" : "/login");
+    router.replace("/dashboard");
   }, [router]);
 
   return (

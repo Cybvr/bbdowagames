@@ -6,6 +6,7 @@ import {
   doc, 
   setDoc, 
   updateDoc,
+  deleteDoc,
   query, 
   where, 
   orderBy,
@@ -26,6 +27,19 @@ export async function fetchQuests(): Promise<Game[]> {
     quests.push({ id: doc.id, ...doc.data() } as Game);
   });
   return quests.sort((a, b) => b.week - a.week);
+}
+
+export async function saveQuest(quest: Omit<Game, "id"> & { id?: string }) {
+  if (quest.id) {
+    const { id, ...data } = quest;
+    await setDoc(doc(db, "quests", id), data, { merge: true });
+  } else {
+    await addDoc(collection(db, "quests"), quest);
+  }
+}
+
+export async function deleteQuest(id: string) {
+  await deleteDoc(doc(db, "quests", id));
 }
 
 /**

@@ -8,39 +8,58 @@ import { getStoredUser, type SessionUser } from "@/lib/session";
 import { hasSubmitted } from "@/lib/submissions";
 import QuestComponent from "@/app/components/QuestComponent";
 import { Card } from "@/app/components/ui/card";
+import LoginModal from "@/app/components/LoginModal";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   useEffect(() => {
-    const storedUser = getStoredUser();
-    if (!storedUser) {
-      router.replace("/login");
+    setCurrentUser(getStoredUser());
+  }, []);
+
+  function handleAction(action: () => void) {
+    if (!currentUser) {
+      setPendingAction(() => action);
+      setShowLoginModal(true);
       return;
     }
-    setCurrentUser(storedUser);
-  }, [router]);
-
-  function goSubmit(title: string) {
-    const game = games.find(g => g.submitTitle === title || g.title.includes(title));
-    if (game && currentUser && hasSubmitted(currentUser.email, game.id)) return;
-    router.push(`/submit?title=${encodeURIComponent(title)}`);
+    action();
   }
 
-  if (!currentUser) {
-    return (
-      <Card className="p-8 text-center" aria-live="polite">
-        <p className="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-wide">Checking session</p>
-        <h1 className="text-[32px] font-black leading-tight tracking-tight text-[var(--color-text-main)]">Loading dashboard...</h1>
-      </Card>
-    );
+  function goSubmit(title: string) {
+    handleAction(() => {
+      const game = games.find(g => g.submitTitle === title || g.title.includes(title));
+      if (game && currentUser && hasSubmitted(currentUser.email, game.id)) return;
+      router.push(`/submit?title=${encodeURIComponent(title)}`);
+    });
+  }
+
+  function handleLoginSuccess() {
+    const user = getStoredUser();
+    setCurrentUser(user);
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
   }
 
   return (
     <section className="flex flex-col flex-1" aria-label="Brief to Brilliant dashboard">
-      <AppHeader isAdmin={currentUser.isAdmin} />
-      <HomeTab email={currentUser.email} onStartQuest={goSubmit} />
+      <AppHeader isAdmin={currentUser?.isAdmin} onLoginClick={() => setShowLoginModal(true)} />
+      
+      <HomeTab 
+        email={currentUser?.email || ""} 
+        onStartQuest={goSubmit} 
+      />
+
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        onSuccess={handleLoginSuccess}
+      />
     </section>
   );
 }

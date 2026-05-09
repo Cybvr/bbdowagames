@@ -9,6 +9,7 @@ import { Card } from "@/app/components/ui/card";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import LoginModal from "@/app/components/LoginModal";
 
 type LeaderEntry = {
   name: string;
@@ -48,11 +49,10 @@ export default function LeaderboardPage() {
   const [leaders, setLeaders] = useState<Record<string, LeaderEntry[]>>({});
   const [activeTab, setActiveTab] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
-    const storedUser = getStoredUser();
-    if (!storedUser) { router.replace("/login"); return; }
-    setCurrentUser(storedUser);
+    setCurrentUser(getStoredUser());
 
     // Fetch submissions from Firestore
     const q = query(collection(db, "submissions"), orderBy("submittedAt", "desc"));
@@ -71,12 +71,16 @@ export default function LeaderboardPage() {
     });
 
     return () => unsubscribe();
-  }, [router, activeTab]);
+  }, [activeTab]);
 
-  if (loading || !currentUser) {
+  function handleLoginSuccess() {
+    setCurrentUser(getStoredUser());
+  }
+
+  if (loading) {
     return (
       <Card className="p-8 text-center" aria-live="polite">
-        <p className="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-wide">Checking session</p>
+        <p className="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-wide">Checking scores</p>
         <h1 className="text-[32px] font-black leading-tight tracking-tight text-[var(--color-text-main)]">Loading leaderboard...</h1>
       </Card>
     );
@@ -87,7 +91,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <AppHeader isAdmin={currentUser.isAdmin} />
+      <AppHeader isAdmin={currentUser?.isAdmin} onLoginClick={() => setShowLoginModal(true)} />
 
       {tabs.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -165,6 +169,12 @@ export default function LeaderboardPage() {
           </div>
         </>
       )}
+
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        onSuccess={handleLoginSuccess}
+      />
     </div>
   );
 }

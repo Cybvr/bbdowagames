@@ -15,6 +15,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, getDocs } from "firebase/firestore";
 import { Game } from "@/lib/data";
 import { submitQuestResponse } from "@/lib/firestore-service";
+import LoginModal from "@/app/components/LoginModal";
 
 type Message = {
   role: "assistant" | "user";
@@ -81,6 +82,8 @@ function SubmitContent() {
     }, delay);
   }
 
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
   useEffect(() => {
     // Fetch quests from Firestore
     const unsubscribeQuests = onSnapshot(collection(db, "quests"), (snapshot) => {
@@ -95,16 +98,19 @@ function SubmitContent() {
   }, []);
 
   useEffect(() => {
-    const storedUser = getStoredUser();
-    if (!storedUser) { router.replace("/login"); return; }
-    
-    setCurrentUser(storedUser);
+    const user = getStoredUser();
+    setCurrentUser(user);
+
+    if (!user) {
+      // Don't redirect, we will show a login prompt in the UI
+      return;
+    }
 
     const checkSubmitted = async () => {
       if (game) {
         const q = query(
-          collection(db, "submissions"), 
-          where("email", "==", storedUser.email),
+          collection(db, "submissions"),
+          where("email", "==", user.email),
           where("questId", "==", game.id)
         );
         const snap = await getDocs(q);
@@ -118,7 +124,7 @@ function SubmitContent() {
 
     if (game && !introSent.current) {
       introSent.current = true;
-      addAssistantMessage(`Hi ${storedUser.name}! I'm your creative thinking partner for this week's challenge. Ready to dive in?`);
+      addAssistantMessage(`Hi ${user.name}! I'm your creative thinking partner for this week's challenge. Ready to dive in?`);
     }
   }, [router, game]);
 
@@ -174,9 +180,15 @@ function SubmitContent() {
         setSubmitOpen(false);
         setPhase("done");
         setThanksOpen(true);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error submitting response:", error);
-        alert("Failed to submit. Please try again.");
+        if (error?.message?.includes("exceeds the maximum allowed size")) {
+          alert("Your submission (including the image) is too large. Please try a smaller image or less text.");
+        } else if (error?.code === "permission-denied") {
+          alert("Permission denied. Please try logging out and back in.");
+        } else {
+          alert(`Failed to submit: ${error?.message || "Unknown error"}. Please try again.`);
+        }
       }
     }
   }
@@ -185,17 +197,61 @@ function SubmitContent() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => setSubmitImage(reader.result as string);
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const max = 800; // Limit to 800px max dimension
+        if (width > height) {
+          if (width > max) { height *= max / width; width = max; }
+        } else {
+          if (height > max) { width *= max / height; height = max; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        setSubmitImage(canvas.toDataURL('image/jpeg', 0.7)); // Compress to 70% quality jpeg
+      };
+      img.src = reader.result as string;
+    };
     reader.readAsDataURL(file);
   }
 
-  if (!currentUser || !game) return null;
+  if (!currentUser) {
+    return (
+      <div className="flex flex-col flex-1">
+        <AppHeader onLoginClick={() => setShowLoginModal(true)} />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <Card className="p-8 max-w-sm border-b-[8px]">
+            <div className="text-4xl mb-4">🔒</div>
+            <h2 className="text-[22px] font-black text-[var(--color-text-main)] mb-2">Ready to take the challenge?</h2>
+            <p className="text-[var(--color-text-muted)] text-[15px] mb-6">You need to be logged in to participate in quests and chat with the AI assistant.</p>
+            <Button variant="game" size="xl" onClick={() => setShowLoginModal(true)} className="w-full">Sign In to Start</Button>
+          </Card>
+        </div>
+        <LoginModal 
+          isOpen={showLoginModal} 
+          onClose={() => setShowLoginModal(false)} 
+          onSuccess={() => {
+            const user = getStoredUser();
+            setCurrentUser(user);
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (!game) return null;
 
   return (
     <>
     <div className="flex flex-col flex-1 h-screen bg-[#f8fcff]">
       <AppHeader
         isAdmin={currentUser.isAdmin}
+        onLoginClick={() => setShowLoginModal(true)}
         slot={phase !== "intro" && phase !== "done" ? (
           <span className={`text-[13px] font-black px-3 py-1 rounded-full border-2 border-b-4 ${timerWarning ? "bg-red-500 border-red-700 text-white" : "bg-white border-[var(--color-border)] text-[var(--color-text-muted)]"}`}>
             {timerMins}:{String(timerSecs).padStart(2, "0")}

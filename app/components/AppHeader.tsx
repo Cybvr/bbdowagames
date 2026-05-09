@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { LogOut, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { clearStoredUser } from "@/lib/session";
+import { clearStoredUser, getStoredUser } from "@/lib/session";
 import {
   Tooltip,
   TooltipContent,
@@ -13,8 +13,17 @@ import {
 } from "@/app/components/ui/tooltip";
 import { Button } from "@/app/components/ui/button";
 
-export default function AppHeader({ isAdmin, slot }: { isAdmin?: boolean; slot?: ReactNode }) {
+export default function AppHeader({ 
+  isAdmin, 
+  slot, 
+  onLoginClick 
+}: { 
+  isAdmin?: boolean; 
+  slot?: ReactNode;
+  onLoginClick?: () => void;
+}) {
   const router = useRouter();
+  const user = typeof window !== "undefined" ? getStoredUser() : null;
 
   function handleLogout() {
     clearStoredUser();
@@ -53,42 +62,50 @@ export default function AppHeader({ isAdmin, slot }: { isAdmin?: boolean; slot?:
           {slot ? <div className="ml-2">{slot}</div> : null}
         </div>
 
-        <div className="flex gap-3">
-          {isAdmin ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" asChild>
-                  <Link href="/admin">Admin</Link>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Admin Panel</TooltipContent>
-            </Tooltip>
-          ) : null}
+        <div className="flex items-center gap-3">
+          {user ? (
+            <>
+              {isAdmin ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" asChild className="h-9 px-3 text-[12px] font-black uppercase tracking-wider">
+                      <Link href="/admin">Admin</Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Admin Panel</TooltipContent>
+                </Tooltip>
+              ) : null}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" asChild>
-                <Link href="/profile" aria-label="Profile">
-                  <UserRound size={18} />
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>View Profile</TooltipContent>
-          </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link href="/profile" aria-label="Profile">
+                      <UserRound size={18} />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>View Profile</TooltipContent>
+              </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleLogout}
-                aria-label="Sign out"
-              >
-                <LogOut size={18} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Log Out</TooltipContent>
-          </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleLogout}
+                    aria-label="Sign out"
+                  >
+                    <LogOut size={18} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Log Out</TooltipContent>
+              </Tooltip>
+            </>
+          ) : (
+            <Button variant="game" size="sm" onClick={onLoginClick}>
+              Sign In
+            </Button>
+          )}
         </div>
       </header>
     </TooltipProvider>

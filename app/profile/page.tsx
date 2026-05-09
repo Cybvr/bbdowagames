@@ -7,34 +7,59 @@ import { getSubmissions, type StoredSubmission } from "@/lib/submissions";
 import AppHeader from "@/app/components/AppHeader";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, UserRound } from "lucide-react";
+import LoginModal from "@/app/components/LoginModal";
 
 export default function ProfilePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [mySubmissions, setMySubmissions] = useState<StoredSubmission[]>([]);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
-    const storedUser = getStoredUser();
-    if (!storedUser) { router.replace("/login"); return; }
-    setCurrentUser(storedUser);
-    const all = getSubmissions().filter((s) => s.email === storedUser.email);
-    setMySubmissions(all);
-  }, [router]);
+    const user = getStoredUser();
+    setCurrentUser(user);
+    if (user) {
+      const all = getSubmissions().filter((s) => s.email === user.email);
+      setMySubmissions(all);
+    }
+  }, []);
 
   function handleLogout() {
     clearStoredUser();
-    router.replace("/login");
+    router.replace("/dashboard");
+    window.location.reload();
+  }
+
+  function handleLoginSuccess() {
+    const user = getStoredUser();
+    setCurrentUser(user);
+    if (user) {
+      const all = getSubmissions().filter((s) => s.email === user.email);
+      setMySubmissions(all);
+    }
   }
 
   if (!currentUser) {
     return (
-      <main className="game-shell">
-        <Card className="loading-card" aria-live="polite">
-          <p className="game-eyebrow">Checking session</p>
-          <h1>Loading profile...</h1>
-        </Card>
-      </main>
+      <div className="flex flex-col flex-1">
+        <AppHeader onLoginClick={() => setShowLoginModal(true)} />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <Card className="p-10 max-w-sm border-b-[8px]">
+            <div className="w-20 h-20 bg-[#f0f0f0] rounded-full flex items-center justify-center mx-auto mb-6 text-[var(--color-text-muted)]">
+              <UserRound size={40} />
+            </div>
+            <h2 className="text-[24px] font-black text-[var(--color-text-main)] mb-2 uppercase tracking-tight">Your Profile</h2>
+            <p className="text-[var(--color-text-muted)] text-[15px] mb-8 font-medium">Log in to view your scores, rank, and mission history.</p>
+            <Button variant="game" size="xl" onClick={() => setShowLoginModal(true)} className="w-full">Sign In to View</Button>
+          </Card>
+        </div>
+        <LoginModal 
+          isOpen={showLoginModal} 
+          onClose={() => setShowLoginModal(false)} 
+          onSuccess={handleLoginSuccess}
+        />
+      </div>
     );
   }
 
@@ -44,7 +69,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <AppHeader isAdmin={currentUser.isAdmin} />
+      <AppHeader isAdmin={currentUser.isAdmin} onLoginClick={() => setShowLoginModal(true)} />
 
       <div className="flex-1 overflow-y-auto mt-4 pr-1">
         <div className="flex flex-col gap-5 pb-10">
@@ -136,6 +161,11 @@ export default function ProfilePage() {
 
         </div>
       </div>
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        onSuccess={handleLoginSuccess}
+      />
     </div>
   );
 }

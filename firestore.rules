@@ -28,7 +28,7 @@ service cloud.firestore {
 
     // Submissions: Users can submit for themselves. Admin can do everything.
     match /submissions/{submissionId} {
-      allow create: if request.auth != null && isOwner(request.resource.data.email);
+      allow create: if request.auth != null && (isAdmin() || request.resource.data.email == request.auth.token.email);
       allow read: if true; 
       allow update, delete: if isAdmin();
     }
