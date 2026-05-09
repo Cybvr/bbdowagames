@@ -21,8 +21,6 @@ export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [submissions, setSubmissions] = useState<StoredSubmission[]>([]);
   const [games, setGames] = useState<Game[]>([]);
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [seedStatus, setSeedStatus] = useState("");
 
   const openGames = games.filter((game) => game.status === "open");
 
@@ -68,26 +66,6 @@ export default function AdminPage() {
     setCurrentUser(storedUser);
   }, [router]);
 
-  async function handleSeed() {
-    if (!confirm("This will overwrite existing data in Firestore with local mock data. Proceed?")) return;
-    
-    setIsSeeding(true);
-    setSeedStatus("Seeding...");
-    
-    const result = await seedFirestore();
-    
-    if (result.success) {
-      setSeedStatus("Success!");
-    } else {
-      setSeedStatus("Error seeding data.");
-    }
-    
-    setTimeout(() => {
-      setIsSeeding(false);
-      setSeedStatus("");
-    }, 3000);
-  }
-
   if (!currentUser) {
     return (
       <main className="game-shell">
@@ -131,15 +109,6 @@ export default function AdminPage() {
               <h2 className="text-[28px] font-black leading-tight tracking-tight text-[var(--color-text-main)] m-0">Games</h2>
             </div>
             <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={handleSeed} 
-                disabled={isSeeding}
-                className="border-dashed"
-              >
-                {isSeeding ? seedStatus : "Seed Firestore"}
-              </Button>
               <Button size="sm" variant="game">New quest</Button>
             </div>
           </div>

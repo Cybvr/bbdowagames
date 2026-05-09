@@ -26,10 +26,10 @@ service cloud.firestore {
       allow write: if isAdmin() || isOwner(request.resource.data.email);
     }
 
-    // Submissions: Users can submit for themselves, view their own. Admin can do everything.
+    // Submissions: Users can submit for themselves. Admin can do everything.
     match /submissions/{submissionId} {
       allow create: if request.auth != null && isOwner(request.resource.data.email);
-      allow read: if true;
+      allow read: if true; 
       allow update, delete: if isAdmin();
     }
 
