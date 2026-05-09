@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Check if user is Jide (Admin)
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'jide.pinheiro@bbdowestafrica.com'
+      );
+    }
+
+    // Check if the authenticated user owns the data
+    function isOwner(email) {
+      return request.auth != null && request.auth.token.email == email;
+    }
+
+    // Quests: Anyone can view, only Admin can edit
+    match /quests/{questId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Users: Anyone can view profiles, users can edit their own, Admin can edit all
+    match /users/{userDocId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOwner(request.resource.data.email);
+    }
+
+    // Submissions: Users can submit for themselves, view their own. Admin can do everything.
+    match /submissions/{submissionId} {
+      allow create: if request.auth != null && isOwner(request.resource.data.email);
+      allow read: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Leaderboard: Everyone can read
+    match /leaderboard/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
