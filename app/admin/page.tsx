@@ -12,7 +12,6 @@ import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { fetchQuests, fetchUserSubmissions } from "@/lib/firestore-service";
 import { Game } from "@/lib/data";
-import { seedFirestore } from "@/lib/seed";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
