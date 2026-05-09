@@ -7,7 +7,7 @@ export type AppUser = {
 };
 
 export const allowedEmailDomain = "bbdowestafrica.com";
-export const allowedEmailDomains = ["bbdowestafrica.com", "ddblagos.com", "casersgroup.com"];
+export const allowedEmailDomains = ["bbdowestafrica.com", "ddblagos.com", "casersgroup.com", "gmail.com"]; // gmail.com added for testing - remove before launch
 export const allowedEmailDomainsLabel = allowedEmailDomains.map((domain) => `@${domain}`).join(", ");
 
 export function normalizeEmail(email: string) {
