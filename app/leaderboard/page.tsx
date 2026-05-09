@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import AppHeader from "@/app/components/AppHeader";
 import { useEffect, useState } from "react";
 import { getStoredUser, type SessionUser } from "@/lib/session";
-import { getSubmissions, type StoredSubmission } from "@/lib/submissions";
+import { type StoredSubmission } from "@/lib/submissions";
 import { Card } from "@/app/components/ui/card";
 import { cn } from "@/lib/utils";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 
 type LeaderEntry = {
   name: string;
@@ -45,19 +47,33 @@ export default function LeaderboardPage() {
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [leaders, setLeaders] = useState<Record<string, LeaderEntry[]>>({});
   const [activeTab, setActiveTab] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const storedUser = getStoredUser();
     if (!storedUser) { router.replace("/login"); return; }
     setCurrentUser(storedUser);
 
-    const board = buildLeaderboard(getSubmissions());
-    setLeaders(board);
-    const tabs = Object.keys(board);
-    if (tabs.length > 0) setActiveTab(tabs[0]);
-  }, [router]);
+    // Fetch submissions from Firestore
+    const q = query(collection(db, "submissions"), orderBy("submittedAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const subs: StoredSubmission[] = [];
+      snapshot.forEach((doc) => {
+        subs.push({ id: doc.id, ...doc.data() } as StoredSubmission);
+      });
+      
+      const board = buildLeaderboard(subs);
+      setLeaders(board);
+      setLoading(false);
+      
+      const tabs = Object.keys(board);
+      if (tabs.length > 0 && !activeTab) setActiveTab(tabs[0]);
+    });
 
-  if (!currentUser) {
+    return () => unsubscribe();
+  }, [router, activeTab]);
+
+  if (loading || !currentUser) {
     return (
       <Card className="p-8 text-center" aria-live="polite">
         <p className="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-wide">Checking session</p>

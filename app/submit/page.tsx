@@ -3,15 +3,18 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import AppHeader from "@/app/components/AppHeader";
 import { useEffect, useState, useRef, Suspense } from "react";
-import { games } from "@/lib/data";
 import { getStoredUser, type SessionUser } from "@/lib/session";
-import { saveSubmission, hasSubmitted } from "@/lib/submissions";
+import { type StoredSubmission } from "@/lib/submissions";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Textarea } from "@/app/components/ui/textarea";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from "@/app/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Copy, ImagePlus, Send } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, where, getDocs } from "firebase/firestore";
+import { Game } from "@/lib/data";
+import { submitQuestResponse } from "@/lib/firestore-service";
 
 type Message = {
   role: "assistant" | "user";
@@ -27,6 +30,7 @@ function SubmitContent() {
   const introSent = useRef(false);
   
   const submitTitle = searchParams.get("title") || "New Task";
+  const [games, setGames] = useState<Game[]>([]);
   const game = games.find(g => g.submitTitle === submitTitle || g.title.includes(submitTitle));
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -78,13 +82,40 @@ function SubmitContent() {
   }
 
   useEffect(() => {
+    // Fetch quests from Firestore
+    const unsubscribeQuests = onSnapshot(collection(db, "quests"), (snapshot) => {
+      const qsts: Game[] = [];
+      snapshot.forEach((doc) => {
+        qsts.push({ id: doc.id, ...doc.data() } as Game);
+      });
+      setGames(qsts);
+    });
+
+    return () => unsubscribeQuests();
+  }, []);
+
+  useEffect(() => {
     const storedUser = getStoredUser();
     if (!storedUser) { router.replace("/login"); return; }
-    if (game && hasSubmitted(storedUser.email, game.id)) {
-      router.replace("/dashboard");
-      return;
-    }
+    
     setCurrentUser(storedUser);
+
+    const checkSubmitted = async () => {
+      if (game) {
+        const q = query(
+          collection(db, "submissions"), 
+          where("email", "==", storedUser.email),
+          where("questId", "==", game.id)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          router.replace("/dashboard");
+        }
+      }
+    };
+
+    checkSubmitted();
+
     if (game && !introSent.current) {
       introSent.current = true;
       addAssistantMessage(`Hi ${storedUser.name}! I'm your creative thinking partner for this week's challenge. Ready to dive in?`);
@@ -128,23 +159,26 @@ function SubmitContent() {
     }
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (currentUser && game) {
-      saveSubmission({
-        id: crypto.randomUUID(),
-        name: currentUser.name,
-        email: currentUser.email,
-        questId: game.id,
-        questTitle: game.title,
-        response: submitText,
-        imageUrl: submitImage,
-        tokensUsed,
-        submittedAt: new Date().toISOString(),
-      });
+      try {
+        await submitQuestResponse({
+          name: currentUser.name,
+          email: currentUser.email,
+          questId: game.id,
+          questTitle: game.title,
+          response: submitText,
+          imageUrl: submitImage,
+          tokensUsed,
+        });
+        setSubmitOpen(false);
+        setPhase("done");
+        setThanksOpen(true);
+      } catch (error) {
+        console.error("Error submitting response:", error);
+        alert("Failed to submit. Please try again.");
+      }
     }
-    setSubmitOpen(false);
-    setPhase("done");
-    setThanksOpen(true);
   }
 
   function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {

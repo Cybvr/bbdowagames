@@ -6,19 +6,50 @@ import AppHeader from "@/app/components/AppHeader";
 import { useEffect, useState } from "react";
 import { games } from "@/lib/data";
 import { getStoredUser, type SessionUser } from "@/lib/session";
-import { getSubmissions, type StoredSubmission } from "@/lib/submissions";
+import { type StoredSubmission } from "@/lib/submissions";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
+import { fetchQuests, fetchUserSubmissions } from "@/lib/firestore-service";
+import { Game } from "@/lib/data";
+import { seedFirestore } from "@/lib/seed";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function AdminPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [submissions, setSubmissions] = useState<StoredSubmission[]>([]);
+  const [games, setGames] = useState<Game[]>([]);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [seedStatus, setSeedStatus] = useState("");
+
   const openGames = games.filter((game) => game.status === "open");
 
   useEffect(() => {
-    setSubmissions(getSubmissions());
+    // Real-time listener for submissions
+    const q = query(collection(db, "submissions"), orderBy("submittedAt", "desc"));
+    const unsubscribeSub = onSnapshot(q, (snapshot) => {
+      const subs: StoredSubmission[] = [];
+      snapshot.forEach((doc) => {
+        subs.push({ id: doc.id, ...doc.data() } as StoredSubmission);
+      });
+      setSubmissions(subs);
+    });
+
+    // Real-time listener for quests
+    const unsubscribeQuests = onSnapshot(collection(db, "quests"), (snapshot) => {
+      const qsts: Game[] = [];
+      snapshot.forEach((doc) => {
+        qsts.push({ id: doc.id, ...doc.data() } as Game);
+      });
+      setGames(qsts.sort((a, b) => b.week - a.week));
+    });
+
+    return () => {
+      unsubscribeSub();
+      unsubscribeQuests();
+    };
   }, []);
 
   useEffect(() => {
@@ -36,6 +67,26 @@ export default function AdminPage() {
 
     setCurrentUser(storedUser);
   }, [router]);
+
+  async function handleSeed() {
+    if (!confirm("This will overwrite existing data in Firestore with local mock data. Proceed?")) return;
+    
+    setIsSeeding(true);
+    setSeedStatus("Seeding...");
+    
+    const result = await seedFirestore();
+    
+    if (result.success) {
+      setSeedStatus("Success!");
+    } else {
+      setSeedStatus("Error seeding data.");
+    }
+    
+    setTimeout(() => {
+      setIsSeeding(false);
+      setSeedStatus("");
+    }, 3000);
+  }
 
   if (!currentUser) {
     return (
@@ -79,7 +130,18 @@ export default function AdminPage() {
               <p className="text-[11px] font-black text-[var(--color-text-muted)] uppercase mb-0.5 tracking-wide">Quest library</p>
               <h2 className="text-[28px] font-black leading-tight tracking-tight text-[var(--color-text-main)] m-0">Games</h2>
             </div>
-            <Button size="sm" variant="game">New quest</Button>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleSeed} 
+                disabled={isSeeding}
+                className="border-dashed"
+              >
+                {isSeeding ? seedStatus : "Seed Firestore"}
+              </Button>
+              <Button size="sm" variant="game">New quest</Button>
+            </div>
           </div>
 
           <div className="flex flex-col">

@@ -4,11 +4,13 @@ import { useRouter, useParams } from "next/navigation";
 import AppHeader from "@/app/components/AppHeader";
 import { useEffect, useState } from "react";
 import { getStoredUser } from "@/lib/session";
-import { getSubmissions, saveScore, type StoredSubmission, type SubmissionScore } from "@/lib/submissions";
+import { type StoredSubmission, type SubmissionScore } from "@/lib/submissions";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { Textarea } from "@/app/components/ui/textarea";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
 const criteria: { key: keyof Omit<SubmissionScore, "notes" | "total">; label: string; weight: number }[] = [
   { key: "strategicClarity", label: "Strategic clarity", weight: 30 },
@@ -29,6 +31,7 @@ export default function SubmissionDetailPage() {
   const [submission, setSubmission] = useState<StoredSubmission | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [scores, setScores] = useState<Record<string, number>>({
     strategicClarity: 0,
@@ -44,35 +47,58 @@ export default function SubmissionDetailPage() {
     if (!storedUser.isAdmin) { router.replace("/dashboard"); return; }
     setIsAdmin(true);
 
-    const all = getSubmissions();
-    const found = all.find((s) => s.id === params.id);
-    if (!found) { router.replace("/admin"); return; }
-    setSubmission(found);
+    if (!params.id) return;
 
-    if (found.score) {
-      setScores({
-        strategicClarity: found.score.strategicClarity,
-        creativeQuality: found.score.creativeQuality,
-        tokenEfficiency: found.score.tokenEfficiency,
-        craft: found.score.craft,
-      });
-      setNotes(found.score.notes);
-      setSaved(true);
-    }
+    // Real-time listener for this submission
+    const unsub = onSnapshot(doc(db, "submissions", params.id as string), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = { id: docSnap.id, ...docSnap.data() } as StoredSubmission;
+        setSubmission(data);
+
+        if (data.score) {
+          setScores({
+            strategicClarity: data.score.strategicClarity,
+            creativeQuality: data.score.creativeQuality,
+            tokenEfficiency: data.score.tokenEfficiency,
+            craft: data.score.craft,
+          });
+          setNotes(data.score.notes);
+          setSaved(true);
+        }
+      } else {
+        router.replace("/admin");
+      }
+    });
+
+    return () => unsub();
   }, [router, params.id]);
 
-  function handleSave() {
-    if (!submission) return;
+  async function handleSave() {
+    if (!submission || !params.id) return;
+    setIsSaving(true);
+    
     const total = weightedTotal(scores);
-    saveScore(submission.id, {
+    const scoreData = {
       strategicClarity: scores.strategicClarity,
       creativeQuality: scores.creativeQuality,
       tokenEfficiency: scores.tokenEfficiency,
       craft: scores.craft,
       notes,
       total,
-    });
-    setSaved(true);
+    };
+
+    try {
+      await updateDoc(doc(db, "submissions", params.id as string), {
+        score: scoreData,
+        status: "graded"
+      });
+      setSaved(true);
+    } catch (error) {
+      console.error("Error saving score:", error);
+      alert("Failed to save score.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   if (!submission) {
@@ -86,7 +112,12 @@ export default function SubmissionDetailPage() {
     );
   }
 
-  const submitted = new Date(submission.submittedAt).toLocaleString();
+  const submitted = submission.submittedAt 
+    ? (typeof submission.submittedAt === 'string' 
+        ? new Date(submission.submittedAt).toLocaleString() 
+        : (submission.submittedAt as any).toDate().toLocaleString())
+    : "Date unknown";
+
   const total = weightedTotal(scores);
 
   return (
@@ -180,8 +211,8 @@ export default function SubmissionDetailPage() {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button variant="game" onClick={handleSave} disabled={saved}>
-                    {saved ? "Score saved" : "Save score"}
+                  <Button variant="game" onClick={handleSave} disabled={saved || isSaving}>
+                    {isSaving ? "Saving..." : saved ? "Score saved" : "Save score"}
                   </Button>
                 </div>
               </div>
