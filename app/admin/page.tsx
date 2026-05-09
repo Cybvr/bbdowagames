@@ -6,8 +6,10 @@ import AppHeader from "@/app/components/AppHeader";
 import { useEffect, useState } from "react";
 import { getStoredUser, type SessionUser } from "@/lib/session";
 import { type StoredSubmission } from "@/lib/submissions";
-import { updateUserRole } from "@/lib/firestore-service";
-import { type AppUser } from "@/lib/users";
+import { updateUserRole, createUserProfile } from "@/lib/firestore-service";
+import { type AppUser, type UserRole } from "@/lib/users";
+import { doc, deleteDoc } from "firebase/firestore";
+import { Input } from "@/app/components/ui/input";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -21,6 +23,10 @@ export default function AdminPage() {
   const [submissions, setSubmissions] = useState<StoredSubmission[]>([]);
   const [games, setGames] = useState<Game[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserRole, setNewUserRole] = useState<UserRole>("player");
+  const [isAddingUser, setIsAddingUser] = useState(false);
 
   const openGames = games.filter((game) => game.status === "open");
 
@@ -86,6 +92,30 @@ export default function AdminPage() {
       console.error("Error updating role:", error);
       alert("Failed to update user role.");
     }
+  }
+
+  async function handleAddUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newUserEmail.trim()) return;
+    setIsAddingUser(true);
+    try {
+      const name = newUserName.trim() || newUserEmail.split("@")[0].split(".").map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+      await createUserProfile({ name, email: newUserEmail.trim().toLowerCase(), role: newUserRole });
+      setNewUserEmail("");
+      setNewUserName("");
+      setNewUserRole("player");
+    } catch (error) {
+      console.error("Error adding user:", error);
+      alert("Failed to add user.");
+    } finally {
+      setIsAddingUser(false);
+    }
+  }
+
+  async function handleRemoveUser(email: string) {
+    if (!confirm(`Remove ${email} from the team?`)) return;
+    const userDocId = email.replace(/[@.]/g, "_");
+    await deleteDoc(doc(db, "users", userDocId));
   }
 
   if (!currentUser) {
@@ -155,11 +185,47 @@ export default function AdminPage() {
 
         <div>
           <Card className="p-6">
-            <div className="mb-5">
+            <div className="mb-4">
               <p className="text-[11px] font-black text-[var(--color-text-muted)] uppercase mb-0.5 tracking-wide">User Management</p>
               <h2 className="text-[22px] font-black leading-tight tracking-tight text-[var(--color-text-main)] m-0">Team</h2>
             </div>
-            <div className="flex flex-col gap-4">
+
+            {/* Add User Form */}
+            <form onSubmit={handleAddUser} className="flex flex-col gap-2 mb-5 pb-5 border-b-2 border-[var(--color-border)]">
+              <p className="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-wide">Add member</p>
+              <Input
+                type="text"
+                placeholder="Name (optional)"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                className="h-9 text-[13px]"
+              />
+              <Input
+                type="email"
+                placeholder="Email address"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                required
+                className="h-9 text-[13px]"
+              />
+              <div className="flex gap-2">
+                <select
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value as UserRole)}
+                  className="flex-1 h-9 rounded-lg border-2 border-[var(--color-border)] text-[12px] font-black px-2 bg-white"
+                >
+                  <option value="player">Player</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <Button type="submit" size="sm" variant="game" disabled={isAddingUser} className="flex-1">
+                  {isAddingUser ? "Adding..." : "Add"}
+                </Button>
+              </div>
+            </form>
+
+            {/* User List */}
+            <div className="flex flex-col gap-3">
+              {users.length === 0 && <p className="text-[12px] font-bold text-[var(--color-text-muted)] text-center py-4">No users yet.</p>}
               {users.map((user) => (
                 <div key={user.email} className="flex flex-col gap-1 pb-3 border-b last:border-none">
                   <div className="flex justify-between items-center">
@@ -169,15 +235,25 @@ export default function AdminPage() {
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center mt-1">
-                    <span className="text-[11px] font-bold text-[var(--color-text-muted)] truncate max-w-[140px]">{user.email}</span>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="h-7 text-[10px] px-2 uppercase font-black"
-                      onClick={() => handleToggleRole(user.email, user.role)}
-                    >
-                      Make {user.role === 'admin' ? 'Player' : 'Admin'}
-                    </Button>
+                    <span className="text-[11px] font-bold text-[var(--color-text-muted)] truncate max-w-[130px]">{user.email}</span>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[10px] px-2 uppercase font-black"
+                        onClick={() => handleToggleRole(user.email, user.role)}
+                      >
+                        {user.role === 'admin' ? 'Player' : 'Admin'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[10px] px-2 uppercase font-black text-red-400 hover:text-red-600"
+                        onClick={() => handleRemoveUser(user.email)}
+                      >
+                        ✕
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
