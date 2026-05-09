@@ -1,4 +1,4 @@
-import { getDisplayNameForEmail, isAdminEmail, normalizeEmail } from "./users";
+import { getDisplayNameForEmail, normalizeEmail } from "./users";
 
 export type SessionUser = {
   name: string;
@@ -14,7 +14,7 @@ export function createSessionUser(email: string): SessionUser {
   return {
     name: getDisplayNameForEmail(normalizedEmail),
     email: normalizedEmail,
-    isAdmin: isAdminEmail(normalizedEmail),
+    isAdmin: false, // Everyone is a player by default unless Firestore says otherwise
   };
 }
 
