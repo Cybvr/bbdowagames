@@ -16,6 +16,7 @@ export type Game = {
   meta: string[];
   criteria: string[];
   variant: "active" | "completed" | "locked";
+  timeLimit?: number;
 };
 
 export type Leader = {
@@ -53,10 +54,11 @@ export const games: Game[] = [];
 export const weeklyLeaders: Record<string, Leader[]> = {};
 
 export const scoreRows: ScoreRow[] = [
-  { label: "Strategic clarity", score: 82 },
-  { label: "Creative quality", score: 75 },
-  { label: "Token efficiency", score: 91 },
-  { label: "Craft", score: 78 },
+  { label: "Strategic clarity", score: 0 },
+  { label: "Creative quality", score: 0 },
+  { label: "Token efficiency", score: 0 },
+  { label: "Craft", score: 0 },
+  { label: "Innovation", score: 0 },
 ];
 
 export const submissions: Submission[] = [];

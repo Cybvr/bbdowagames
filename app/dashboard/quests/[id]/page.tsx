@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import AppHeader from "@/app/components/AppHeader";
 import { useEffect, useState, useRef, Suspense } from "react";
 import { getStoredUser, type SessionUser } from "@/lib/session";
@@ -25,14 +25,14 @@ type Message = {
 
 function SubmitContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const params = useParams();
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const introSent = useRef(false);
   
-  const submitTitle = searchParams.get("title") || "New Task";
+  const questId = params.id as string;
   const [games, setGames] = useState<Game[]>([]);
-  const game = games.find(g => g.submitTitle === submitTitle || g.title.includes(submitTitle));
+  const game = games.find(g => g.id === questId);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState("");
@@ -41,7 +41,7 @@ function SubmitContent() {
   const [tokensUsed, setTokensUsed] = useState(0);
   const tokenBudget = 1000;
   const tokenPct = Math.min(100, Math.round((tokensUsed / tokenBudget) * 100));
-  const TIMER_SECONDS = 5 * 60;
+  const TIMER_SECONDS = (game?.timeLimit ?? 5) * 60;
   const [secondsLeft, setSecondsLeft] = useState(TIMER_SECONDS);
   const timerMins = Math.floor(secondsLeft / 60);
   const timerSecs = secondsLeft % 60;
@@ -54,6 +54,7 @@ function SubmitContent() {
   const [submitImage, setSubmitImage] = useState<string | null>(null);
   const [thanksOpen, setThanksOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
 
   const chatResponses = [
     `Interesting angle. What feels most urgent to you — what the brand says, how it looks, or who it says it to first?`,
@@ -96,6 +97,47 @@ function SubmitContent() {
 
     return () => unsubscribeQuests();
   }, []);
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    if (!questId) return;
+    try {
+      const raw = localStorage.getItem(`wq-draft-${questId}`);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft.messages?.length) {
+          setMessages(draft.messages.filter((m: any) => typeof m.content === "string"));
+        }
+        if (draft.phase && draft.phase !== "done") {
+          setPhase(draft.phase);
+          if (draft.phase !== "intro") introSent.current = true;
+        }
+        if (typeof draft.tokensUsed === "number") setTokensUsed(draft.tokensUsed);
+        if (typeof draft.secondsLeft === "number") setSecondsLeft(draft.secondsLeft);
+        setDraftRestored(true);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questId]);
+
+  // Save draft to localStorage whenever chat state changes
+  useEffect(() => {
+    if (!questId || phase === "intro" || phase === "done") return;
+    try {
+      const draft = {
+        messages: messages.filter((m) => typeof m.content === "string"),
+        phase,
+        tokensUsed,
+        secondsLeft,
+      };
+      localStorage.setItem(`wq-draft-${questId}`, JSON.stringify(draft));
+    } catch {}
+  }, [messages, phase, tokensUsed, secondsLeft, questId]);
+
+  // Reset timer when game loads from Firestore (only if no draft was restored)
+  useEffect(() => {
+    if (game && !draftRestored) setSecondsLeft((game.timeLimit ?? 5) * 60);
+  }, [game?.id, game?.timeLimit, draftRestored]);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -177,6 +219,8 @@ function SubmitContent() {
           imageUrl: submitImage,
           tokensUsed,
         });
+        // Clear the saved draft now that it's submitted
+        localStorage.removeItem(`wq-draft-${questId}`);
         setSubmitOpen(false);
         setPhase("done");
         setThanksOpen(true);
@@ -259,14 +303,14 @@ function SubmitContent() {
         ) : undefined}
       />
 
-      <div className="flex-1 max-w-3xl mx-auto w-full flex flex-col overflow-hidden pb-6">
+      <div className="flex-1 max-w-3xl mx-auto w-full flex flex-col overflow-hidden pb-4">
         {/* Chat Area */}
-        <div 
+        <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
+          className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-4 scroll-smooth"
         >
           {messages.map((msg) => (
-            <div 
+            <div
               key={msg.id}
               className={cn(
                 "flex w-full animate-in fade-in slide-in-from-bottom-2",
@@ -274,18 +318,19 @@ function SubmitContent() {
               )}
             >
               <div className={cn(
-                "max-w-[85%] p-4 rounded-2xl text-[15px] font-medium leading-relaxed shadow-sm",
-                msg.role === "user" 
-                  ? "bg-[var(--color-blue)] text-white rounded-tr-none border-b-4 border-[var(--color-blue-dark)]" 
+                "max-w-[88%] sm:max-w-[80%] px-4 py-3 rounded-2xl text-[14px] sm:text-[15px] font-medium leading-relaxed shadow-sm whitespace-pre-wrap",
+                msg.role === "user"
+                  ? "bg-[var(--color-blue)] text-white rounded-tr-none border-b-4 border-[var(--color-blue-dark)]"
                   : "bg-white text-[var(--color-text-main)] rounded-tl-none border-2 border-[var(--color-border)] border-b-4"
               )}>
                 {msg.content}
               </div>
             </div>
           ))}
+
           {isTyping && (
-            <div className="flex justify-start animate-pulse">
-              <div className="bg-white p-4 py-3 rounded-2xl rounded-tl-none border-2 border-[var(--color-border)] flex gap-1">
+            <div className="flex justify-start">
+              <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-none border-2 border-[var(--color-border)] flex gap-1 animate-pulse">
                 <div className="w-1.5 h-1.5 bg-[var(--color-text-muted)] rounded-full animate-bounce" />
                 <div className="w-1.5 h-1.5 bg-[var(--color-text-muted)] rounded-full animate-bounce [animation-delay:0.2s]" />
                 <div className="w-1.5 h-1.5 bg-[var(--color-text-muted)] rounded-full animate-bounce [animation-delay:0.4s]" />
@@ -318,30 +363,29 @@ function SubmitContent() {
                 >
                   <Copy size={13} />{copied ? "Copied!" : "Copy response"}
                 </button>
-                <Button variant="game" size="sm" className="self-start" onClick={() => setSubmitOpen(true)}>
-                  I have what I need, ready to submit
+                <Button variant="game" size="sm" className="self-start text-[12px] sm:text-[13px]" onClick={() => setSubmitOpen(true)}>
+                  I have what I need — submit
                 </Button>
               </div>
             );
           })()}
         </div>
 
-
         {/* Input area */}
         {phase !== "done" && (
-          <div className="px-6 pb-4 flex-shrink-0 flex flex-col gap-2">
-            <Card className="p-2 border-2 border-b-4 border-[var(--color-border)] rounded-2xl flex items-end gap-2 bg-white shadow-lg">
+          <div className="px-3 sm:px-6 pb-2 flex-shrink-0">
+            <Card className="p-1.5 border-2 border-b-4 border-[var(--color-border)] rounded-2xl flex items-end gap-2 bg-white shadow-lg">
               <Textarea
-                className="flex-1 border-none focus:ring-0 min-h-[50px] max-h-[150px] resize-none py-3 text-[15px]"
-                placeholder={phase === "intro" ? "Or type your response..." : "Ask a question, push an angle, test an idea..."}
+                className="flex-1 border-none focus:ring-0 min-h-[44px] max-h-[120px] resize-none py-2.5 px-2 text-[14px] sm:text-[15px]"
+                placeholder={phase === "intro" ? "Or type your response..." : "Ask a question, push an angle..."}
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
                 }}
               />
-              <Button variant="game" size="icon" className="h-10 w-10 rounded-xl mb-1" onClick={() => handleSend()} disabled={isTyping}>
-                <Send size={18} />
+              <Button variant="game" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl mb-1 flex-shrink-0" onClick={() => handleSend()} disabled={isTyping}>
+                <Send size={16} />
               </Button>
             </Card>
           </div>
@@ -397,8 +441,6 @@ function SubmitContent() {
 
 export default function SubmitPage() {
   return (
-    <Suspense fallback={<div className="h-screen flex items-center justify-center font-black text-[var(--color-blue)]">LOADING TASK...</div>}>
-      <SubmitContent />
-    </Suspense>
+    <SubmitContent />
   );
 }

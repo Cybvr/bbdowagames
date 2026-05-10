@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { auth } from "@/lib/firebase";
-import { 
+import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail
@@ -10,6 +10,7 @@ import {
 import { fetchUserProfile } from "@/lib/firestore-service";
 import { saveStoredUser } from "@/lib/session";
 import { normalizeEmail, isAllowedEmail, allowedEmailDomainsLabel } from "@/lib/users";
+import { Eye, EyeOff } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -27,6 +28,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   if (!isOpen) return null;
 
@@ -39,6 +41,12 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 
     if (!isAllowedEmail(normalizedEmail)) {
       setError(`Please use a work email: ${allowedEmailDomainsLabel}`);
+      setIsLoading(false);
+      return;
+    }
+
+    if (isRegistering && password.length < 6) {
+      setError("Use at least 6 characters for your password.");
       setIsLoading(false);
       return;
     }
@@ -69,6 +77,8 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
         setError("Invalid email or password.");
       } else if (err.code === "auth/email-already-in-use") {
         setError("Email already registered. Try logging in.");
+      } else if (err.code === "auth/weak-password") {
+        setError("Use at least 6 characters for your password.");
       } else {
         setError(err.message || "Authentication failed.");
       }
@@ -97,7 +107,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <Card className="w-full max-w-[400px] p-8 relative shadow-2xl border-b-[8px]">
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] font-black text-xl"
         >
@@ -105,8 +115,8 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
         </button>
 
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-green)] to-[var(--color-blue)] flex items-center justify-center text-xl font-black text-white border-2 border-white mx-auto mb-4">
-            B
+          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center overflow-hidden  mx-auto mb-4">
+            <img src="/logo.png" alt="WieldQuest Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-2xl font-black text-[var(--color-text-main)] uppercase tracking-tight">
             {isRegistering ? "Create Account" : "Welcome Back"}
@@ -125,25 +135,36 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
           <form onSubmit={handleAuth} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black text-[var(--color-text-main)] uppercase tracking-wide">Work Email</label>
-              <Input 
-                type="email" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                required 
+              <Input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
                 placeholder="you@bbdowestafrica.com"
                 className="font-bold border-2"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black text-[var(--color-text-main)] uppercase tracking-wide">Password</label>
-              <Input 
-                type="password" 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                required 
-                placeholder="••••••••"
-                className="font-bold border-2"
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  className="font-bold border-2 pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-blue)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blue)] focus-visible:ring-offset-2"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -155,7 +176,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
             </Button>
 
             <div className="flex flex-col gap-2 mt-4">
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsRegistering(!isRegistering)}
                 className="text-[11px] font-black text-[var(--color-blue)] uppercase tracking-widest hover:underline"
@@ -163,7 +184,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
                 {isRegistering ? "Already have an account? Login" : "New here? Create account"}
               </button>
               {!isRegistering && (
-                <button 
+                <button
                   type="button"
                   onClick={handleResetPassword}
                   className="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest hover:underline"

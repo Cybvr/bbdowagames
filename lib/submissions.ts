@@ -3,6 +3,7 @@ export type SubmissionScore = {
   creativeQuality: number;
   tokenEfficiency: number;
   craft: number;
+  innovation: number;
   notes: string;
   total: number;
 };
@@ -20,7 +21,7 @@ export type StoredSubmission = {
   score?: SubmissionScore;
 };
 
-const key = "btb-submissions";
+const key = "wq-submissions";
 
 export function getSubmissions(): StoredSubmission[] {
   if (typeof window === "undefined") return [];

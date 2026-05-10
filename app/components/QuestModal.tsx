@@ -32,13 +32,14 @@ export function QuestModal({ open, onOpenChange, quest, onSave }: QuestModalProp
     statusLabel: "Pending",
     meta: [],
     criteria: [],
-    variant: "locked"
+    variant: "locked",
+    timeLimit: 5,
   });
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (quest) {
-      setFormData(quest);
+      setFormData({ ...quest, timeLimit: quest.timeLimit ?? 5 });
     } else {
       setFormData({
         week: 1,
@@ -50,7 +51,8 @@ export function QuestModal({ open, onOpenChange, quest, onSave }: QuestModalProp
         statusLabel: "Pending",
         meta: [],
         criteria: [],
-        variant: "locked"
+        variant: "locked",
+        timeLimit: 20
       });
     }
   }, [quest, open]);
@@ -78,12 +80,16 @@ export function QuestModal({ open, onOpenChange, quest, onSave }: QuestModalProp
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black uppercase text-[var(--color-text-muted)]">Week</label>
               <Input type="number" value={formData.week} onChange={e => setFormData({ ...formData, week: parseInt(e.target.value) })} required />
             </div>
             <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-black uppercase text-[var(--color-text-muted)]">Time limit (mins)</label>
+              <Input type="number" min={1} max={60} value={formData.timeLimit ?? 5} onChange={e => setFormData({ ...formData, timeLimit: parseInt(e.target.value) || 5 })} required />
+            </div>
+            <div className="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
               <label className="text-[11px] font-black uppercase text-[var(--color-text-muted)]">Status</label>
               <Select 
                 value={formData.status} 
@@ -125,12 +131,12 @@ export function QuestModal({ open, onOpenChange, quest, onSave }: QuestModalProp
             <Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} required rows={4} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-black uppercase text-[var(--color-text-muted)]">Meta (Tags, comma separated)</label>
-              <Input 
-                value={formData.meta.join(", ")} 
-                onChange={e => setFormData({ ...formData, meta: e.target.value.split(",").map(s => s.trim()) })} 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-black uppercase text-[var(--color-text-muted)]">Meta (comma separated)</label>
+              <Input
+                value={formData.meta.join(", ")}
+                onChange={e => setFormData({ ...formData, meta: e.target.value.split(",").map(s => s.trim()) })}
               />
             </div>
             <div className="flex flex-col gap-1.5">

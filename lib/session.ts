@@ -6,7 +6,7 @@ export type SessionUser = {
   isAdmin: boolean;
 };
 
-const sessionKey = "brief-to-brilliant-user";
+const sessionKey = "wieldquest-user";
 
 export function createSessionUser(email: string): SessionUser {
   const normalizedEmail = normalizeEmail(email);

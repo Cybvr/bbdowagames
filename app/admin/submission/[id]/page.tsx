@@ -12,17 +12,16 @@ import { Textarea } from "@/app/components/ui/textarea";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
-const criteria: { key: keyof Omit<SubmissionScore, "notes" | "total">; label: string; weight: number }[] = [
-  { key: "strategicClarity", label: "Strategic clarity", weight: 30 },
-  { key: "creativeQuality", label: "Creative quality", weight: 30 },
-  { key: "tokenEfficiency", label: "Token efficiency", weight: 20 },
-  { key: "craft", label: "Craft", weight: 20 },
+const criteria: { key: keyof Omit<SubmissionScore, "notes" | "total">; label: string }[] = [
+  { key: "strategicClarity", label: "Strategic clarity" },
+  { key: "creativeQuality", label: "Creative quality" },
+  { key: "tokenEfficiency", label: "Token efficiency" },
+  { key: "craft", label: "Craft" },
+  { key: "innovation", label: "Innovation" },
 ];
 
-function weightedTotal(scores: Record<string, number>): number {
-  return Math.round(
-    criteria.reduce((sum, c) => sum + (scores[c.key] ?? 0) * (c.weight / 100), 0)
-  );
+function calculateTotal(scores: Record<string, number>): number {
+  return criteria.reduce((sum, c) => sum + (scores[c.key] ?? 0), 0);
 }
 
 export default function SubmissionDetailPage() {
@@ -38,12 +37,13 @@ export default function SubmissionDetailPage() {
     creativeQuality: 0,
     tokenEfficiency: 0,
     craft: 0,
+    innovation: 0,
   });
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
     const storedUser = getStoredUser();
-    if (!storedUser) { router.replace("/login"); return; }
+    if (!storedUser) { router.replace("/dashboard"); return; }
     if (!storedUser.isAdmin) { router.replace("/dashboard"); return; }
     setIsAdmin(true);
 
@@ -61,6 +61,7 @@ export default function SubmissionDetailPage() {
             creativeQuality: data.score.creativeQuality,
             tokenEfficiency: data.score.tokenEfficiency,
             craft: data.score.craft,
+            innovation: data.score.innovation || 0,
           });
           setNotes(data.score.notes);
           setSaved(true);
@@ -77,12 +78,13 @@ export default function SubmissionDetailPage() {
     if (!submission || !params.id) return;
     setIsSaving(true);
     
-    const total = weightedTotal(scores);
+    const total = calculateTotal(scores);
     const scoreData = {
       strategicClarity: scores.strategicClarity,
       creativeQuality: scores.creativeQuality,
       tokenEfficiency: scores.tokenEfficiency,
       craft: scores.craft,
+      innovation: scores.innovation,
       notes,
       total,
     };
@@ -101,16 +103,7 @@ export default function SubmissionDetailPage() {
     }
   }
 
-  if (!submission) {
-    return (
-      <main className="game-shell">
-        <Card className="loading-card" aria-live="polite">
-          <p className="game-eyebrow">Loading</p>
-          <h1>Fetching submission...</h1>
-        </Card>
-      </main>
-    );
-  }
+  if (!submission) return null;
 
   const submitted = submission.submittedAt 
     ? (typeof submission.submittedAt === 'string' 
@@ -118,7 +111,7 @@ export default function SubmissionDetailPage() {
         : (submission.submittedAt as any).toDate().toLocaleString())
     : "Date unknown";
 
-  const total = weightedTotal(scores);
+  const total = calculateTotal(scores);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -144,7 +137,7 @@ export default function SubmissionDetailPage() {
                   <p className="text-[13px] font-black text-[var(--color-text-main)] mt-2">{submission.questTitle.replace(/\bRound\b/gi, "Week")}</p>
                 </div>
                 <Badge variant="game" style={saved ? {} : { background: 'var(--color-text-muted)', borderBottomColor: '#999' }}>
-                  {saved ? `${submission.score?.total ?? total}/10` : "Unscored"}
+                  {saved ? `${submission.score?.total ?? total}/100` : "Unscored"}
                 </Badge>
               </div>
             </Card>
@@ -172,7 +165,7 @@ export default function SubmissionDetailPage() {
                   <p className="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-wide mb-0.5">Judge scoring</p>
                   <h2 className="text-[22px] font-black text-[var(--color-text-main)] m-0">Score this entry</h2>
                 </div>
-                <span className="text-[32px] font-black text-[var(--color-blue)]">{total}<span className="text-[16px] text-[var(--color-text-muted)]">/10</span></span>
+                <span className="text-[32px] font-black text-[var(--color-blue)]">{total}<span className="text-[16px] text-[var(--color-text-muted)]">/100</span></span>
               </div>
 
               <div className="flex flex-col gap-5">
@@ -180,12 +173,12 @@ export default function SubmissionDetailPage() {
                   <div key={c.key}>
                     <div className="flex justify-between items-center mb-1.5">
                       <label className="text-[13px] font-black text-[var(--color-text-main)]">{c.label}</label>
-                      <span className="text-[11px] font-black text-[var(--color-text-muted)]">{c.weight}% weight · {scores[c.key]}/10</span>
+                      <span className="text-[11px] font-black text-[var(--color-text-muted)]">{scores[c.key]}/20</span>
                     </div>
                     <input
                       type="range"
                       min={0}
-                      max={10}
+                      max={20}
                       step={1}
                       value={scores[c.key]}
                       onChange={(e) => {
@@ -195,7 +188,7 @@ export default function SubmissionDetailPage() {
                       className="w-full accent-[var(--color-blue)]"
                     />
                     <div className="flex justify-between text-[10px] font-black text-[var(--color-text-muted)] mt-0.5">
-                      <span>0</span><span>5</span><span>10</span>
+                      <span>0</span><span>10</span><span>20</span>
                     </div>
                   </div>
                 ))}

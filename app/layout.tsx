@@ -3,8 +3,11 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Brief to Brilliant",
-  description: "An agency AI challenge game for briefs, scoring, and leaderboards.",
+  title: "WieldQuest",
+  description: "Use AI as your weapon. Tackle weekly creative quests and climb the leaderboard.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
