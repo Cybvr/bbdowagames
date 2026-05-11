@@ -31,40 +31,40 @@ export const caseStudies: CaseStudy[] = [
   {
     slug: "weilquest",
     number: "01",
-    title: "BBDO West Africa",
+    title: "weilquest",
     solution: "Opportunity Creation",
     arena: "Creative & Agency Operations",
     lede:
-      "We had the talent. We had no way to prove it was ready for what AI was changing.",
+      "Our teams were using AI. We couldn't tell if any of it was working.",
     client: {
-      name: "BBDO West Africa",
+      name: "bbdowa",
       description:
-        "One of West Africa's leading creative agencies, operating across Lagos and regional markets, looking to build a measurable edge in AI-assisted creative production before the capability gap became a competitive liability.",
+        "A West African creative group operating across multiple agency units, looking to build genuine AI capability in their people — and a reliable way to measure whether it was actually developing.",
     },
     problem:
-      "BBDO West Africa's creative teams had strong instincts but no structured way to develop or demonstrate AI fluency. Passive training sessions weren't building transferable skills. Capability existed in pockets — individual practitioners experimenting on their own — but there was no shared standard, no visibility into who was progressing, and no mechanism to close the gap at scale. The agency needed a way to make AI-assisted creative work learnable, measurable, and competitive without disrupting the existing culture of craft.",
+      "The problem wasn't access to AI tools. It was knowing how to use them well. Creatives had the tools but no benchmark for good. There was no way to separate effective AI use from noise, no shared standard for what strong output looked like, and no visibility into whether skills were improving over time. Existing training gave people information. Nothing gave them practice under pressure, scored feedback, or a reason to keep getting better.",
     phases: [
       {
         title: "Architect",
-        body: "Mapped the distance between the agency's existing creative workflow and the demands of AI-augmented output. Defined a five-dimension scoring rubric — strategic clarity, creative quality, token efficiency, craft, and innovation — that could evaluate AI-assisted work on the same terms as traditional creative production. Designed a challenge format built around real client brief archetypes, with a token budget constraint that forced intentional, efficient thinking rather than exploratory sprawl.",
+        body: "Defined the three dimensions that actually matter in AI-assisted work: productivity, creativity, and token efficiency. Built a scoring rubric across five criteria — strategic clarity, creative quality, token efficiency, craft, and innovation — that could evaluate all three from a single submission. Designed a challenge format around real brief archetypes, with a fixed token budget that made efficiency visible and comparable across every player.",
       },
       {
         title: "Assemble",
-        body: "Brought together a pod of creative directors, strategists, and platform engineers to build and validate the system. Creative leadership stress-tested the brief library against live account scenarios to ensure fidelity. Technologists built the scoring engine, leaderboard infrastructure, and submission pipeline on a tight timeline. Domain leads from three agency units — BBDO West Africa, DDB Lagos, and Casers Group — were embedded as beta players to pressure-test the rubric before wider rollout.",
+        body: "Assembled a pod of challenge designers, creative directors, and engineers to build and run the system. Challenge briefs were validated against live account scenarios to keep stakes real. Engineers shipped the scoring engine, leaderboard, and submission pipeline in parallel. Leaders from three agency units — BBDO West Africa, DDB Lagos, and Casers Group — were brought in as the first cohort to stress-test the rubric before wider rollout.",
       },
       {
         title: "Operate",
-        body: "Launched weilquest as a live, rolling challenge platform across three agency divisions over twelve weeks. Players received timed briefs, submitted AI-assisted responses within a 1,000-token budget, and received scored feedback across all five dimensions. Brief difficulty was iterated week-over-week based on aggregate submission data — harder constraints where scores plateaued, more open prompts where participation dropped. Leaderboard rankings were surfaced in real time, making individual and team progress visible without requiring external coaching or facilitation.",
+        body: "Launched weilquest as a live, rolling platform. Players received a brief, a 1,000-token budget, and a deadline. Submissions were scored across all five dimensions and ranked on a live leaderboard. Each cycle, briefs were iterated based on where scores clustered and where they stalled — harder constraints where the cohort plateaued, more open prompts where participation dropped. Players got a score, a rank, and a clear read on exactly where their AI use was strong and where it wasn't.",
       },
     ],
     outcome: {
       summary:
-        "BBDO West Africa left with a functioning internal platform, a measurable baseline for AI creative fluency across three divisions, and a repeatable challenge format they own — without a retraining mandate or ongoing consultant dependency.",
+        "bbdowa left with a live training platform, a measurable baseline for AI skill across three agency units, and a scoring system that makes productivity, creativity, and token efficiency visible — without classroom time or passive content.",
       stats: [
-        { value: "+41%", label: "avg score improvement, Week 1 to Week 8" },
-        { value: "<8wk", label: "concept to live platform" },
-        { value: "92%", label: "player retention across 12-week cycle" },
-        { value: "3 units", label: "agency divisions active on launch week" },
+        { value: "+41%", label: "avg score improvement across the first cycle" },
+        { value: "3 units", label: "agency divisions scored and ranked" },
+        { value: "92%", label: "player retention across a 12-week cycle" },
+        { value: "1,000", label: "token budget per challenge brief" },
       ],
     },
   },
