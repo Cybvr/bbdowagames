@@ -9,7 +9,7 @@ import {
 } from "firebase/auth";
 import { fetchUserProfile } from "@/lib/firestore-service";
 import { saveStoredUser } from "@/lib/session";
-import { normalizeEmail, isAllowedEmail, allowedEmailDomainsLabel } from "@/lib/users";
+import { normalizeEmail, isAllowedEmail } from "@/lib/users";
 import { Eye, EyeOff } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -38,12 +38,6 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
     setIsLoading(true);
 
     const normalizedEmail = normalizeEmail(email);
-
-    if (!isAllowedEmail(normalizedEmail)) {
-      setError(`Please use a work email: ${allowedEmailDomainsLabel}`);
-      setIsLoading(false);
-      return;
-    }
 
     if (isRegistering && password.length < 6) {
       setError("Use at least 6 characters for your password.");
